@@ -16,9 +16,13 @@
  */
 
 const { program } = require('playwright-core/lib/utilsBundle');
-const { decorateCommand } = require('playwright/lib/mcp/program');
+const { decorateCommand } = require('./lib/mcp/program');
 
 const packageJSON = require('./package.json');
 const p = program.version('Version ' + packageJSON.version).name('Playwright MCP');
-decorateCommand(p, packageJSON.version)
-void program.parseAsync(process.argv);
+
+// Create the run-mcp-server subcommand
+const command = p.command('run-mcp-server', { hidden: true });
+decorateCommand(command, packageJSON.version);
+
+void p.parseAsync(process.argv);

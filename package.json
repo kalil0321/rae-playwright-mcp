@@ -1,6 +1,6 @@
 {
   "name": "rae-playwright-mcp",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Playwright Tools for MCP",
   "mcpName": "com.microsoft/playwright-mcp",
   "repository": {
@@ -27,8 +27,9 @@
     "wtest": "playwright test --project=webkit",
     "dtest": "MCP_IN_DOCKER=1 playwright test --project=chromium-docker",
     "npm-publish": "npm run test && npm publish",
-    "copy-config": "cp ../playwright/packages/playwright/src/mcp/config.d.ts . && perl -pi -e \"s|import type \\* as playwright from 'playwright-core';|import type * as playwright from 'playwright';|\" ./config.d.ts",
-    "roll": "npm run copy-config && npm run lint"
+    "copy-config": "cp ../playwright/packages/playwright/src/mcp/config.d.ts lib/mcp/config.d.ts 2>/dev/null || cp ../playwright/packages/playwright/lib/mcp/config.d.js lib/mcp/config.d.js",
+    "sync-lib": "mkdir -p lib/mcp lib/common lib/transform lib/third_party && cp -r ../playwright/packages/playwright/lib/mcp/* lib/mcp/ && cp -r ../playwright/packages/playwright/lib/common lib/ && cp -r ../playwright/packages/playwright/lib/transform lib/ && cp -r ../playwright/packages/playwright/lib/third_party lib/ && cp ../playwright/packages/playwright/lib/util.js lib/ && cp ../playwright/packages/playwright/lib/utilsBundle.js lib/ && cp ../playwright/packages/playwright/lib/utilsBundleImpl.js lib/ 2>/dev/null || true",
+    "roll": "npm run sync-lib && npm run copy-config && npm run lint"
   },
   "exports": {
     "./package.json": "./package.json",
