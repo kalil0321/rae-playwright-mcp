@@ -19,10 +19,25 @@ const { program } = require('playwright-core/lib/utilsBundle');
 const { decorateCommand } = require('./lib/mcp/program');
 
 const packageJSON = require('./package.json');
-const p = program.version('Version ' + packageJSON.version).name('Playwright MCP');
+const p = program.version('Version ' + packageJSON.version).name('Rae Playwright MCP');
 
 // Create the run-mcp-server subcommand
 const command = p.command('run-mcp-server', { hidden: true });
 decorateCommand(command, packageJSON.version);
+
+// If no subcommand provided, default to run-mcp-server
+// This allows the bin entry to work: npx rae-playwright-mcp
+const args = process.argv.slice(2);
+const hasSubcommand = args.some(arg => !arg.startsWith('-') && arg !== 'help');
+const hasHelp = args.includes('--help') || args.includes('-h');
+
+if (!hasSubcommand) {
+    // If --help is passed without a subcommand, show help for run-mcp-server
+    if (hasHelp) {
+        process.argv.splice(2, 0, 'run-mcp-server');
+    } else {
+        process.argv.push('run-mcp-server');
+    }
+}
 
 void p.parseAsync(process.argv);
