@@ -1,13 +1,13 @@
 {
-  "name": "@playwright/mcp",
-  "version": "0.0.53",
+  "name": "rae-playwright-mcp",
+  "version": "0.0.1",
   "description": "Playwright Tools for MCP",
   "mcpName": "com.microsoft/playwright-mcp",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/microsoft/playwright-mcp.git"
+    "url": "git+https://github.com/kalil0321/rae-playwright-mcp.git"
   },
-  "homepage": "https://playwright.dev",
+  "homepage": "https://github.com/kalil0321/rae-playwright-mcp",
   "engines": {
     "node": ">=18"
   },
@@ -26,7 +26,7 @@
     "ftest": "playwright test --project=firefox",
     "wtest": "playwright test --project=webkit",
     "dtest": "MCP_IN_DOCKER=1 playwright test --project=chromium-docker",
-    "npm-publish": "npm run clean && npm run test && npm publish",
+    "npm-publish": "npm run test && npm publish",
     "copy-config": "cp ../playwright/packages/playwright/src/mcp/config.d.ts . && perl -pi -e \"s|import type \\* as playwright from 'playwright-core';|import type * as playwright from 'playwright';|\" ./config.d.ts",
     "roll": "npm run copy-config && npm run lint"
   },

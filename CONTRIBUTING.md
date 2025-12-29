@@ -44,6 +44,40 @@ npm run flint
 
 Comments should have an explicit purpose and should improve readability rather than hinder it. If the code would not be understood without comments, consider re-writing the code to make it self-explanatory.
 
+## Run the MCP server locally
+
+After setting up the Playwright monorepo and running `npm run watch`, you can run the MCP server locally using the Playwright CLI:
+
+```bash
+# Run the MCP server (uses stdio transport by default)
+node packages/playwright/cli.js run-mcp-server
+```
+
+To run as a standalone HTTP server (useful for testing):
+
+```bash
+# Run on a specific port
+node packages/playwright/cli.js run-mcp-server --port 8931
+```
+
+This will start an HTTP server that you can connect to via:
+
+```js
+{
+  "mcpServers": {
+    "playwright": {
+      "url": "http://localhost:8931/mcp"
+    }
+  }
+}
+```
+
+You can also pass various options like `--headless`, `--browser`, `--host`, etc. See `--help` for all available options:
+
+```bash
+node packages/playwright/cli.js run-mcp-server --help
+```
+
 ## Add a test
 
 Playwright requires a test for the new or modified functionality. An exception would be a pure refactoring, but chances are you are doing more than that.
