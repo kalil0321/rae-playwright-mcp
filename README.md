@@ -320,7 +320,7 @@ Playwright MCP server supports following arguments. They can be provided in the 
 
 This fork includes additional features beyond the original Playwright MCP:
 
-- **`--run-id <id>`**: Specify a custom UUID for HAR file organization. HAR files are saved to `~/.reverse-api-engineer/runs/testing-playwright/{run-id}/network.har`. If not provided, a UUID is automatically generated.
+- **`--run-id <id>`**: Specify a custom UUID for HAR file organization. HAR files are saved to `~/.reverse-api/runs/har/{run-id}/network.har`. If not provided, a UUID is automatically generated.
 - **Automatic HAR Recording**: All browser sessions automatically record network traffic in HAR format. The HAR file path is logged when the server starts.
 - **Default Tracing**: Tracing capabilities are enabled by default with source code capture (`sources: true`)
 - **Self-contained Package**: All MCP code is bundled in the package, no dependency on the Playwright monorepo
