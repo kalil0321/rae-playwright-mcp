@@ -115,39 +115,6 @@ jobs:
             attach_eol_manifest $tag
           done
 
-  package-release-extension:
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write # Needed to upload release assets
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 20
-          cache: 'npm'
-      - name: Install extension dependencies
-        working-directory: ./extension
-        run: npm ci
-      - name: Build extension
-        working-directory: ./extension
-        run: npm run build
-      - name: Get extension version
-        id: get-version
-        working-directory: ./extension
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-      - name: Package extension
-        working-directory: ./extension
-        run: |
-          cd dist
-          zip -r ../playwright-mcp-extension-${{ steps.get-version.outputs.version }}.zip .
-          cd ..
-      - name: Upload extension to release
-        env:
-           GITHUB_TOKEN: ${{ github.token }}
-        run: |
-            gh release upload ${{github.event.release.tag_name}} ./extension/playwright-mcp-extension-${{ steps.get-version.outputs.version }}.zip
-
   publish-release-mcp-registry:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

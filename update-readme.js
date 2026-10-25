@@ -18,22 +18,49 @@
 
 const fs = require('fs')
 const path = require('path')
-const { zodToJsonSchema } = require('zod-to-json-schema')
 const { execSync } = require('child_process');
 
-const { browserTools } = require('playwright/lib/mcp/browser/tools');
+const { tools } = require('playwright-core/lib/coreBundle');
 
-const capabilities = {
+const capabilities = /** @type {Record<string, string>} */ ({
+  'core-navigation': 'Core automation',
   'core': 'Core automation',
   'core-tabs': 'Tab management',
+  'core-input': 'Core automation',
   'core-install': 'Browser installation',
-  'vision': 'Coordinate-based (opt-in via --caps=vision)',
-  'pdf': 'PDF generation (opt-in via --caps=pdf)',
-  'testing': 'Test assertions (opt-in via --caps=testing)',
-  'tracing': 'Tracing (opt-in via --caps=tracing)',
-};
+  'config': 'Configuration',
+  'network': 'Network',
+  'storage': 'Storage',
+  'devtools': 'DevTools',
+  'vision': 'Coordinate-based',
+  'pdf': 'PDF generation',
+  'testing': 'Test assertions',
+});
 
-const toolsByCapability = Object.fromEntries(Object.entries(capabilities).map(([capability, title]) => [title, browserTools.filter(tool => tool.capability === capability).sort((a, b) => a.schema.name.localeCompare(b.schema.name))]));
+const knownCapabilities = new Set(Object.keys(capabilities));
+const unknownCapabilities = [...new Set(tools.browserTools.map(tool => tool.capability))].filter(cap => !knownCapabilities.has(cap));
+if (unknownCapabilities.length)
+  throw new Error(`Unknown tool capabilities: ${unknownCapabilities.join(', ')}. Please update the capabilities map in ${path.basename(__filename)}.`);
+
+/** @type {Record<string, any[]>} */
+const toolsByCapability = {};
+for (const capability of Object.keys(capabilities)) {
+  const title = capabilityTitle(capability);
+  let filteredTools = tools.browserTools.filter(tool => tool.capability === capability && !tool.skillOnly);
+  filteredTools = (toolsByCapability[title] || []).concat(filteredTools);
+  toolsByCapability[title] = filteredTools;
+}
+for (const [, tools] of Object.entries(toolsByCapability))
+  tools.sort((a, b) => a.schema.name.localeCompare(b.schema.name));
+
+/**
+ * @param {string} capability
+ * @returns {string}
+ */
+function capabilityTitle(capability) {
+  const title = capabilities[capability];
+  return capability.startsWith('core') ? title : `${title} (opt-in via --caps=${capability})`;
+}
 
 /**
  * @param {any} tool
@@ -47,7 +74,7 @@ function formatToolForReadme(tool) {
   lines.push(`  - Title: ${tool.title}`);
   lines.push(`  - Description: ${tool.description}`);
 
-  const inputSchema = /** @type {any} */ (zodToJsonSchema(tool.inputSchema || {}));
+  const inputSchema = /** @type {any} */ (tool.inputSchema ? tool.inputSchema.toJSONSchema() : {});
   const requiredParams = inputSchema.required || [];
   if (inputSchema.properties && Object.keys(inputSchema.properties).length) {
     lines.push(`  - Parameters:`);
@@ -114,25 +141,75 @@ async function updateTools(content) {
 }
 
 /**
+ * @param {string} prefix
+ * @returns {string}
+ */
+function optionEnvName(prefix) {
+  if (prefix === 'secrets')
+    return 'PLAYWRIGHT_MCP_SECRETS_FILE';
+  if (prefix === 'cdp-header')
+    return 'PLAYWRIGHT_MCP_CDP_HEADERS';
+  if (prefix === 'no-webmcp')
+    return 'PLAYWRIGHT_MCP_WEBMCP=false';
+  return `PLAYWRIGHT_MCP_` + prefix.toUpperCase().replace(/-/g, '_');
+}
+
+/**
  * @param {string} content
  * @returns {Promise<string>}
  */
 async function updateOptions(content) {
   console.log('Listing options...');
-  const output = execSync('node cli.js --help');
+  execSync('node cli.js --help > help.txt');
+  const output = fs.readFileSync('help.txt');
+  fs.unlinkSync('help.txt');
   const lines = output.toString().split('\n');
   const firstLine = lines.findIndex(line => line.includes('--version'));
   lines.splice(0, firstLine + 1);
   const lastLine = lines.findIndex(line => line.includes('--help'));
   lines.splice(lastLine);
+
+  /**
+   * @type {{ name: string, value: string }[]}
+   */
+  const options = [];
+  for (let line of lines) {
+    if (line.startsWith('  --')) {
+      const l = line.substring('  --'.length);
+      const gapIndex = l.indexOf('  ');
+      const name = l.substring(0, gapIndex).trim();
+      const value = l.substring(gapIndex).trim();
+      options.push({ name, value });
+    } else {
+      const value = line.trim();
+      options[options.length - 1].value += ' ' + value;
+    }
+  }
+
+  const table = [];
+  table.push(`| Option | Description |`);
+  table.push(`|--------|-------------|`);
+  for (const option of options) {
+    const prefix = option.name.split(' ')[0];
+    const envName = optionEnvName(prefix);
+    table.push(`| --${option.name} | ${option.value}<br>*env* \`${envName}\` |`);
+  }
+
+  if (process.env.PRINT_ENV) {
+    const envTable = [];
+    envTable.push(`| Environment |`);
+    envTable.push(`|-------------|`);
+    for (const option of options) {
+      const prefix = option.name.split(' ')[0];
+      const envName = optionEnvName(prefix);
+      envTable.push(`| \`${envName}\` ${option.value} |`);
+    }
+    console.log(envTable.join('\n'));
+  }
+
   const startMarker = `<!--- Options generated by ${path.basename(__filename)} -->`;
   const endMarker = `<!--- End of options generated section -->`;
-  return updateSection(content, startMarker, endMarker, [
-    '```',
-    '> npx @playwright/mcp@latest --help',
-    ...lines,
-    '```',
-  ]);
+  return updateSection(content, startMarker, endMarker, table);
 }
 
 /**
@@ -143,14 +220,14 @@ async function updateConfig(content) {
   console.log('Updating config schema from config.d.ts...');
   const configPath = path.join(__dirname, 'config.d.ts');
   const configContent = await fs.promises.readFile(configPath, 'utf-8');
-  
+
   // Extract the Config type definition
   const configTypeMatch = configContent.match(/export type Config = (\{[\s\S]*?\n\});/);
   if (!configTypeMatch)
     throw new Error('Config type not found in config.d.ts');
-  
+
   const configType = configTypeMatch[1]; // Use capture group to get just the object definition
-  
+
   const startMarker = `<!--- Config generated by ${path.basename(__filename)} -->`;
   const endMarker = `<!--- End of config generated section -->`;
   return updateSection(content, startMarker, endMarker, [

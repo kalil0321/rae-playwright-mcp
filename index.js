@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-const { createConnection } = require('./lib/mcp/index');
-module.exports = { createConnection };
+const { tools } = require('playwright-core/lib/coreBundle');
+module.exports = { createConnection: tools.createConnection };
