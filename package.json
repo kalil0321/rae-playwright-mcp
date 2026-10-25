@@ -8,7 +8,7 @@
   },
   "homepage": "https://github.com/kalil0321/rae-playwright-mcp",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "author": {
     "name": "Microsoft Corporation"

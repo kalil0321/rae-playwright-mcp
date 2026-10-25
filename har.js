@@ -47,6 +47,25 @@ function takeOption(args, name) {
   return undefined;
 }
 
+// The merged config is written to a temp directory, so paths that upstream resolves
+// against the config file's directory are made absolute first.
+function loadUserConfig(configPath) {
+  const raw = fs.readFileSync(configPath, 'utf-8');
+  const data = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw;
+  let config;
+  try {
+    config = JSON.parse(data);
+  } catch (error) {
+    throw new Error(`--config must be a JSON file when HAR recording is enabled: ${configPath} (${error.message})`);
+  }
+  const baseDir = path.dirname(path.resolve(configPath));
+  for (const key of ['initScript', 'initPage']) {
+    if (Array.isArray(config.browser?.[key]))
+      config.browser[key] = config.browser[key].map(entry => path.resolve(baseDir, entry));
+  }
+  return config;
+}
+
 // `run-mcp-server` is the subcommand older reverse-api-engineer releases pass.
 // The same word can also be the value of an option, which must be kept.
 function stripLegacySubcommand(args, optionTakesValue) {
@@ -86,7 +105,7 @@ function prepareHarArgs(rawArgs, env = process.env, optionTakesValue = () => fal
   const harPath = path.join(harDir, 'recording.har');
 
   const userConfigPath = userConfigArg || env.PLAYWRIGHT_MCP_CONFIG;
-  const config = userConfigPath ? JSON.parse(fs.readFileSync(userConfigPath, 'utf-8')) : {};
+  const config = userConfigPath ? loadUserConfig(userConfigPath) : {};
   config.browser = config.browser || {};
   config.browser.contextOptions = config.browser.contextOptions || {};
   config.browser.contextOptions.recordHar = config.browser.contextOptions.recordHar || {

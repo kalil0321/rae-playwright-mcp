@@ -2,17 +2,17 @@
 
 A fork of [Playwright MCP](https://github.com/microsoft/playwright-mcp) used by [reverse-api-engineer](https://github.com/kalil0321/reverse-api-engineer). It runs the upstream server unchanged and adds per-run HAR recording:
 
-- Every browser session records a HAR to `{save-har-path}/{run-id}/recording.har`, written when the browser closes. Response bodies are stored as files next to it.
+- Every browser session records a HAR to `{save-har-path}/{run-id}/recording.har`, written when the browser closes. Response bodies are stored as files next to it. Requires Node.js 20 or newer.
 - `--run-id <id>` (or `PLAYWRIGHT_MCP_RUN_ID`) names the run directory. Defaults to a random UUID. Letters, digits, `-` and `_` only.
 - `--save-har-path <path>` (or `PLAYWRIGHT_MCP_SAVE_HAR_PATH`) sets the base directory. Defaults to `~/.reverse-api/runs/har`.
-- The recording is injected as `browser.contextOptions.recordHar` into the config, so a `recordHar` in your own `--config` takes precedence.
+- The recording is injected as `browser.contextOptions.recordHar` into the config, so a `recordHar` in your own `--config` takes precedence and its path is used instead. Your `--config` must be JSON.
 - The `run-mcp-server` subcommand used by older reverse-api-engineer releases is still accepted.
 
 ```bash
 npx rae-playwright-mcp@latest --run-id my-run --headless
 ```
 
-Everything below is the upstream documentation; replace `@playwright/mcp` with `rae-playwright-mcp` in the examples.
+Everything below is the upstream documentation. Its examples install `@playwright/mcp`; to get HAR recording, use `rae-playwright-mcp` in their place.
 
 ## Playwright MCP
 
@@ -33,7 +33,7 @@ This package provides MCP interface into Playwright. If you are using a **coding
 - **Deterministic tool application**. Avoids ambiguity common with screenshot-based approaches.
 
 ### Requirements
-- Node.js 18 or newer
+- Node.js 20 or newer
 - VS Code, Cursor, Windsurf, Claude Desktop, Goose, Grok, Junie or any other MCP client
 
 <!--

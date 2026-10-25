@@ -69,6 +69,24 @@ test('prepareHarArgs merges a user config without overriding its recordHar', asy
   fs.rmSync(configDir, { recursive: true });
 });
 
+test('prepareHarArgs resolves init paths against the user config directory', async ({}, testInfo) => {
+  const configDir = testInfo.outputPath('cfg');
+  fs.mkdirSync(configDir, { recursive: true });
+  const userConfig = path.join(configDir, 'user.json');
+  fs.writeFileSync(userConfig, '﻿' + JSON.stringify({ browser: { initScript: ['init.js'], initPage: ['/abs/page.ts'] } }));
+  const result = prepareHarArgs(['--config', userConfig, '--save-har-path', testInfo.outputPath('z')], {});
+  const config = JSON.parse(fs.readFileSync(result.args[result.args.indexOf('--config') + 1], 'utf-8'));
+  expect(config.browser.initScript).toEqual([path.join(configDir, 'init.js')]);
+  expect(config.browser.initPage).toEqual([path.resolve('/abs/page.ts')]);
+  fs.rmSync(result.configDir, { recursive: true });
+});
+
+test('prepareHarArgs rejects non-JSON configs with a clear error', async ({}, testInfo) => {
+  const iniConfig = testInfo.outputPath('user.ini');
+  fs.writeFileSync(iniConfig, '[browser]\nbrowserName=chromium\n');
+  expect(() => prepareHarArgs(['--config', iniConfig, '--save-har-path', testInfo.outputPath('w')], {})).toThrow(/must be a JSON file/);
+});
+
 test('prepareHarArgs keeps run-mcp-server when it is an option value', async ({}, testInfo) => {
   const takesValue = (flag: string) => flag === '--output-dir';
   const base = testInfo.outputPath('values');

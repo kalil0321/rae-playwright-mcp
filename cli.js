@@ -20,7 +20,7 @@ const { program } = require('playwright-core/lib/utilsBundle');
 const { tools, libCli } = require('playwright-core/lib/coreBundle');
 const { prepareHarArgs } = require('./har');
 
-if (process.argv.includes('install-browser')) {
+if (process.argv[2] === 'install-browser') {
   const argv = process.argv.map(arg => arg === 'install-browser' ? 'install' : arg);
   libCli.decorateProgram(program);
   void program.parseAsync(argv);
