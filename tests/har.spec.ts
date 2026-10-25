@@ -69,6 +69,17 @@ test('prepareHarArgs merges a user config without overriding its recordHar', asy
   fs.rmSync(configDir, { recursive: true });
 });
 
+test('prepareHarArgs keeps run-mcp-server when it is an option value', async ({}, testInfo) => {
+  const takesValue = (flag: string) => flag === '--output-dir';
+  const base = testInfo.outputPath('values');
+  const first = prepareHarArgs(['--run-id', 'run-mcp-server', '--save-har-path', base], {}, takesValue);
+  expect(first.harPath).toBe(path.join(base, 'run-mcp-server', 'recording.har'));
+  const second = prepareHarArgs(['--output-dir', 'run-mcp-server', '--headless', 'run-mcp-server', '--save-har-path', base], {}, takesValue);
+  expect(second.args.slice(0, 3)).toEqual(['--output-dir', 'run-mcp-server', '--headless']);
+  for (const result of [first, second])
+    fs.rmSync(result.configDir, { recursive: true });
+});
+
 test('prepareHarArgs rejects run ids that are not path-safe', async ({}, testInfo) => {
   expect(() => prepareHarArgs(['--run-id', '../escape', '--save-har-path', testInfo.outputPath('y')], {})).toThrow(/--run-id/);
 });

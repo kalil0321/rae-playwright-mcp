@@ -28,13 +28,19 @@ if (process.argv.includes('install-browser')) {
 }
 
 const packageJSON = require('./package.json');
+const p = program.version('Version ' + packageJSON.version).name('Rae Playwright MCP');
+tools.decorateMCPCommand(p, packageJSON.version);
+p.option('--run-id <id>', 'run identifier; the HAR is saved to {save-har-path}/{run-id}/recording.har. Defaults to a random UUID.');
+p.option('--save-har-path <path>', 'directory for HAR files. Defaults to ~/.reverse-api/runs/har.');
+
+const optionTakesValue = flag => p.options.some(option => (option.long === flag || option.short === flag) && (option.required || option.optional));
 const userArgs = process.argv.slice(2);
 const wantsInfo = userArgs.some(arg => ['--help', '-h', '--version', '-V'].includes(arg));
 
 let argv = process.argv;
 if (!wantsInfo) {
   try {
-    const { args, harPath, configDir } = prepareHarArgs(userArgs);
+    const { args, harPath, configDir } = prepareHarArgs(userArgs, process.env, optionTakesValue);
     argv = [...process.argv.slice(0, 2), ...args];
     process.on('exit', () => fs.rmSync(configDir, { recursive: true, force: true }));
     // eslint-disable-next-line no-console
@@ -45,10 +51,5 @@ if (!wantsInfo) {
     process.exit(1);
   }
 }
-
-const p = program.version('Version ' + packageJSON.version).name('Rae Playwright MCP');
-tools.decorateMCPCommand(p, packageJSON.version);
-p.option('--run-id <id>', 'run identifier; the HAR is saved to {save-har-path}/{run-id}/recording.har. Defaults to a random UUID.');
-p.option('--save-har-path <path>', 'directory for HAR files. Defaults to ~/.reverse-api/runs/har.');
 
 void program.parseAsync(argv);

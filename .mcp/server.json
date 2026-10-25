@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.kalil0321/rae-playwright-mcp",
+  "description": "Playwright MCP with per-run HAR recording for reverse-api-engineer",
+  "repository": {
+    "url": "https://github.com/kalil0321/rae-playwright-mcp",
+    "source": "github"
+  },
+  "version": "0.0.9",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "rae-playwright-mcp",
+      "version": "0.0.9",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

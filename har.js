@@ -47,29 +47,45 @@ function takeOption(args, name) {
   return undefined;
 }
 
+// `run-mcp-server` is the subcommand older reverse-api-engineer releases pass.
+// The same word can also be the value of an option, which must be kept.
+function stripLegacySubcommand(args, optionTakesValue) {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] !== 'run-mcp-server')
+      continue;
+    const previous = args[i - 1];
+    const isOptionValue = previous !== undefined && previous.startsWith('-') && !previous.includes('=') && optionTakesValue(previous);
+    if (!isOptionValue) {
+      args.splice(i, 1);
+      return;
+    }
+  }
+}
+
 /**
  * Rewrites MCP server arguments so the browser context records a HAR to
  * `{saveHarPath}/{runId}/recording.har`.
  *
+ * `optionTakesValue(flag)` tells whether an upstream flag consumes the next argument.
  * Returns the args to hand to upstream Playwright MCP and the HAR path.
  */
-function prepareHarArgs(rawArgs, env = process.env) {
+function prepareHarArgs(rawArgs, env = process.env, optionTakesValue = () => false) {
   const args = [...rawArgs];
-  // `run-mcp-server` is the subcommand older reverse-api-engineer releases pass.
-  const subcommand = args.indexOf('run-mcp-server');
-  if (subcommand !== -1)
-    args.splice(subcommand, 1);
+  const runIdArg = takeOption(args, '--run-id');
+  const baseDirArg = takeOption(args, '--save-har-path');
+  const userConfigArg = takeOption(args, '--config');
+  stripLegacySubcommand(args, optionTakesValue);
 
-  const runId = takeOption(args, '--run-id') || env.PLAYWRIGHT_MCP_RUN_ID || crypto.randomUUID();
+  const runId = runIdArg || env.PLAYWRIGHT_MCP_RUN_ID || crypto.randomUUID();
   if (!RUN_ID_PATTERN.test(runId))
     throw new Error(`--run-id may only contain letters, digits, "-" and "_": ${runId}`);
-  const baseDir = takeOption(args, '--save-har-path') || env.PLAYWRIGHT_MCP_SAVE_HAR_PATH || defaultHarBaseDir();
+  const baseDir = baseDirArg || env.PLAYWRIGHT_MCP_SAVE_HAR_PATH || defaultHarBaseDir();
 
   const harDir = path.join(path.resolve(baseDir), runId);
   fs.mkdirSync(harDir, { recursive: true });
   const harPath = path.join(harDir, 'recording.har');
 
-  const userConfigPath = takeOption(args, '--config') || env.PLAYWRIGHT_MCP_CONFIG;
+  const userConfigPath = userConfigArg || env.PLAYWRIGHT_MCP_CONFIG;
   const config = userConfigPath ? JSON.parse(fs.readFileSync(userConfigPath, 'utf-8')) : {};
   config.browser = config.browser || {};
   config.browser.contextOptions = config.browser.contextOptions || {};
