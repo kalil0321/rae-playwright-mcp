@@ -16,7 +16,19 @@
 
 import type * as playwright from 'playwright';
 
-export type ToolCapability = 'core' | 'core-tabs' | 'core-install' | 'vision' | 'pdf' | 'testing' | 'tracing';
+export type ToolCapability =
+  'config' |
+  'core' |
+  'core-navigation' |
+  'core-tabs' |
+  'core-input' |
+  'core-install' |
+  'network' |
+  'pdf' |
+  'storage' |
+  'testing' |
+  'vision' |
+  'devtools';
 
 export type Config = {
   /**
@@ -65,9 +77,18 @@ export type Config = {
     cdpHeaders?: Record<string, string>;
 
     /**
-     * Remote endpoint to connect to an existing Playwright server.
+     * Timeout in milliseconds for connecting to CDP endpoint. Defaults to 30000 (30 seconds). Pass 0 to disable timeout.
      */
-    remoteEndpoint?: string;
+    cdpTimeout?: number;
+
+    /**
+     * Remote endpoint to connect to an existing Playwright server. May be a
+     * WebSocket URL string, or a [ConnectOptions] object that mirrors the
+     * `connectOptions` shape used by the test runner. When passed as an object,
+     * `exposeNetwork`, `headers`, `slowMo`, and `timeout` are forwarded to the
+     * underlying connect call.
+     */
+    remoteEndpoint?: string | playwright.ConnectOptions & { endpoint: string };
 
     /**
      * Paths to TypeScript files to add as initialization scripts for Playwright page.
@@ -80,6 +101,13 @@ export type Config = {
      */
     initScript?: string[];
   },
+
+  /**
+   * Connect to a running browser instance (Edge/Chrome only). If specified, `browser`
+   * config is ignored.
+   * Requires the "Playwright Extension" to be installed.
+   */
+  extension?: boolean;
 
   server?: {
     /**
@@ -104,6 +132,7 @@ export type Config = {
    *   - 'core': Core browser automation features.
    *   - 'pdf': PDF generation and manipulation.
    *   - 'vision': Coordinate-based interactions.
+   *   - 'devtools': Developer tools features.
    */
   capabilities?: ToolCapability[];
 
@@ -113,17 +142,10 @@ export type Config = {
   saveSession?: boolean;
 
   /**
-   * Whether to save the Playwright trace of the session into the output directory.
+   * Whether to collect and expose the tools that a page registers through the
+   * experimental WebMCP API. Enabled by default.
    */
-  saveTrace?: boolean;
-
-  /**
-   * If specified, saves the Playwright video of the session into the output directory.
-   */
-  saveVideo?: {
-    width: number;
-    height: number;
-  };
+  webmcp?: boolean;
 
   /**
    * Reuse the same browser context between all connected HTTP clients.
@@ -131,16 +153,23 @@ export type Config = {
   sharedBrowserContext?: boolean;
 
   /**
-   * Secrets are used to prevent LLM from getting sensitive data while
-   * automating scenarios such as authentication.
-   * Prefer the browser.contextOptions.storageState over secrets file as a more secure alternative.
+   * Secrets are used to replace matching plain text in the tool responses to prevent the LLM
+   * from accidentally getting sensitive data. It is a convenience and not a security feature,
+   * make sure to always examine information coming in and from the tool on the client.
    */
   secrets?: Record<string, string>;
 
   /**
-   * The directory to save output files.
+   * The directory for automatically named output files, for example a screenshot taken without an
+   * explicit file name. Files with an explicit name are resolved against the workspace root instead
+   * and are not affected by this option.
    */
   outputDir?: string;
+
+  /**
+   * Threshold for evicting old output files, in bytes.
+   */
+  outputMaxSize?: number;
 
   console?: {
     /**
@@ -152,11 +181,19 @@ export type Config = {
   network?: {
     /**
      * List of origins to allow the browser to request. Default is to allow all. Origins matching both `allowedOrigins` and `blockedOrigins` will be blocked.
+     *
+     * Supported formats:
+     * - Full origin: `https://example.com:8080` - matches only that origin
+     * - Wildcard port: `http://localhost:*` - matches any port on localhost with http protocol
      */
     allowedOrigins?: string[];
 
     /**
      * List of origins to block the browser to request. Origins matching both `allowedOrigins` and `blockedOrigins` will be blocked.
+     *
+     * Supported formats:
+     * - Full origin: `https://example.com:8080` - matches only that origin
+     * - Wildcard port: `http://localhost:*` - matches any port on localhost with http protocol
      */
     blockedOrigins?: string[];
   };
@@ -176,22 +213,59 @@ export type Config = {
      * Configures default navigation timeout: https://playwright.dev/docs/api/class-page#page-set-default-navigation-timeout. Defaults to 60000ms.
      */
     navigation?: number;
+
+    /**
+     * Configures default expect timeout: https://playwright.dev/docs/test-timeouts#expect-timeout. Defaults to 5000ms.
+     */
+    expect?: number;
+
+    /**
+     * How long to wait after each action for triggered work (navigations, requests) to settle before responding. Defaults to 500ms.
+     */
+    settle?: number;
+
+    /**
+     * Close the browser after this many milliseconds without a tool call, and relaunch it on the next one.
+     * Defaults to one hour for headless browsers Playwright launched, and to no timeout for headed or attached ones. Pass 0 to disable.
+     * The CLI shuts the whole session down instead of relaunching.
+     */
+    idle?: number;
   };
 
   /**
-   * Whether to send image responses to the client. Can be "allow", "omit", or "auto". Defaults to "auto", which sends images if the client can display them.
+   * Whether to send image responses to the client. Can be "allow", "omit", or "only". Defaults to "allow".
+   * With "only", a response that carries an image consists of the image parts alone, without the text part.
    */
-  imageResponses?: 'allow' | 'omit';
+  imageResponses?: 'allow' | 'omit' | 'only';
+
+  /**
+   * How file paths are rendered in tool results. Can be "relative" to the workspace root or "absolute". Defaults to "relative".
+   */
+  filePaths?: 'relative' | 'absolute';
 
   snapshot?: {
     /**
      * When taking snapshots for responses, specifies the mode to use.
      */
-    mode?: 'incremental' | 'full' | 'none';
+    mode?: 'full' | 'none';
+
+    /**
+     * Whether to include each element's bounding box as [box=x,y,width,height] in snapshots.
+     * Coordinates are viewport-relative, in CSS pixels (Element.getBoundingClientRect).
+     */
+    boxes?: boolean;
   };
 
   /**
-   * External UUID to use for HAR directory. If not provided, a UUID will be generated.
+   * allowUnrestrictedFileAccess acts as a guardrail to prevent the LLM from accidentally
+   * wandering outside its intended workspace. It is a convenience defense to catch unintended
+   * file access, not a secure boundary; a deliberate attempt to reach other directories can be
+   * easily worked around, so always rely on client-level permissions for true security.
    */
-  runId?: string;
+  allowUnrestrictedFileAccess?: boolean;
+
+  /**
+   * Specify the language to use for code generation.
+   */
+  codegen?: 'typescript' | 'python' | 'java' | 'csharp' | 'none';
 };

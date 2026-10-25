@@ -33,17 +33,17 @@ test('browser_click', async ({ client, server }) => {
     arguments: { url: server.PREFIX },
   })).toHaveResponse({
     code: `await page.goto('${server.PREFIX}');`,
-    pageState: expect.stringContaining(`- button \"Submit\" [ref=e2]`),
+    snapshot: expect.stringContaining(`- button \"Submit\" [ref=e2]`),
   });
 
   expect(await client.callTool({
     name: 'browser_click',
     arguments: {
       element: 'Submit button',
-      ref: 'e2',
+      target: 'e2',
     },
   })).toHaveResponse({
     code: `await page.getByRole('button', { name: 'Submit' }).click();`,
-    pageState: expect.stringContaining(`button "Submit" [active] [ref=e2]`),
+    snapshot: expect.stringContaining(`button "Submit" [active] [ref=e2]`),
   });
 });

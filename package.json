@@ -1,8 +1,7 @@
 {
   "name": "rae-playwright-mcp",
-  "version": "0.0.7",
-  "description": "Rae Playwright MCP - Enhanced Playwright Tools for MCP",
-  "mcpName": "com.microsoft/playwright-mcp",
+  "version": "0.0.9",
+  "description": "Rae Playwright MCP - Playwright MCP with per-run HAR recording for reverse-api-engineer",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kalil0321/rae-playwright-mcp.git"
@@ -15,21 +14,20 @@
     "name": "Microsoft Corporation"
   },
   "license": "Apache-2.0",
+  "mcpName": "io.github.kalil0321/rae-playwright-mcp",
   "scripts": {
-    "lint": "npm run update-readme",
-    "update-readme": "node update-readme.js",
-    "docker-build": "docker build --no-cache -t playwright-mcp-dev:latest .",
-    "docker-rm": "docker rm playwright-mcp-dev",
-    "docker-run": "docker run -it -p 8080:8080 --name playwright-mcp-dev playwright-mcp-dev:latest",
+    "lint": "node update-readme.js",
     "test": "playwright test",
     "ctest": "playwright test --project=chrome",
     "ftest": "playwright test --project=firefox",
     "wtest": "playwright test --project=webkit",
     "dtest": "MCP_IN_DOCKER=1 playwright test --project=chromium-docker",
-    "npm-publish": "npm run test && npm publish",
-    "copy-config": "cp ../playwright/packages/playwright/src/mcp/config.d.ts lib/mcp/config.d.ts 2>/dev/null || cp ../playwright/packages/playwright/lib/mcp/config.d.js lib/mcp/config.d.js",
-    "sync-lib": "mkdir -p lib/mcp lib/common lib/transform lib/third_party && cp -r ../playwright/packages/playwright/lib/mcp/* lib/mcp/ && cp -r ../playwright/packages/playwright/lib/common lib/ && cp -r ../playwright/packages/playwright/lib/transform lib/ && cp -r ../playwright/packages/playwright/lib/third_party lib/ && cp ../playwright/packages/playwright/lib/util.js lib/ && cp ../playwright/packages/playwright/lib/utilsBundle.js lib/ && cp ../playwright/packages/playwright/lib/utilsBundleImpl.js lib/ 2>/dev/null || true",
-    "roll": "npm run sync-lib && npm run copy-config && npm run lint"
+    "build": "echo OK",
+    "npm-publish": "npm run lint && npm run test && npm publish",
+    "docker-build": "docker build --no-cache -t playwright-mcp-dev:latest .",
+    "docker-rm": "docker rm playwright-mcp-dev",
+    "docker-run": "docker run -it -p 8080:8080 --name playwright-mcp-dev playwright-mcp-dev:latest",
+    "roll": "node roll.js"
   },
   "exports": {
     "./package.json": "./package.json",
@@ -39,16 +37,16 @@
     }
   },
   "dependencies": {
-    "playwright": "1.58.0-alpha-2025-12-29",
-    "playwright-core": "1.58.0-alpha-2025-12-29"
+    "playwright": "1.64.1",
+    "playwright-core": "1.64.1"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@playwright/test": "1.64.1",
+    "@types/node": "^24.3.0"
   },
   "bin": {
     "rae-playwright-mcp": "cli.js",
     "mcp-server-playwright": "cli.js"
-  },
-  "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.24.0",
-    "@playwright/test": "1.58.0-alpha-2025-12-29",
-    "@types/node": "^24.3.0"
   }
 }
